@@ -1,0 +1,77 @@
+import { C, PS } from "../constants.js";
+
+const LAWS = [
+  { id:"01", rule:"Injector + Control DOJI = S.P.I",      sp:"Injector",         col:"#3ecf7e", note:"Doji must raid the injector. Entry: injector body limit." },
+  { id:"02", rule:"Incomplete Injector + Control = S.P.I", sp:"Injector",         col:"#3ecf7e", note:"Injector touches only one side of predecessor candle." },
+  { id:"03", rule:"Complete Injector = S.P.C",             sp:"Control",          col:"#d4aa50", note:"Full engulf exhausts injector's pullback powers." },
+  { id:"04", rule:"Control + Shifter DOJI = S.P.C",        sp:"Control",          col:"#d4aa50", note:"Shifter doji → control becomes the sheath candle." },
+  { id:"05", rule:"Shifter + Injector DOJI = S.P.S",       sp:"Shifter",          col:"#e09050", note:"Injector doji → shifter holds the sheath powers." },
+  { id:"06", rule:"Control Engulfs Shifter = S.P.I",       sp:"Injector",         col:"#3ecf7e", note:"Control eating shifter pushes powers back to injector." },
+  { id:"07", rule:"Ex Injector Shifter = S.P.I",           sp:"Injector",         col:"#3ecf7e", note:"Gemini shifter reaches injector through control without raiding it." },
+  { id:"08", rule:"Liquidity Raid by Self = S.P.I",        sp:"Opp. Injector",    col:"#7c5cbf", note:"Same-color candle raids own BSL/SSL → opposite injector gains sheath." },
+  { id:"09", rule:"Liquidity Raid by Opps = S.P. Raider",  sp:"Raiding Candle",   col:"#7c5cbf", note:"Opposite force raids BSL/SSL → that raiding candle IS the entry." },
+  { id:"10", rule:"Triple ICS Cycle = S.P.I",              sp:"Injector",         col:"#3ecf7e", note:"Full I→C→S cycle complete → powers return to injector." },
+  { id:"11", rule:"No Raid, Raid You",                     sp:"Injector (raided)",col:"#e05c5c", note:"Injector skips exhaustion candle → injector gets raided before continuation." },
+];
+
+const EXTRAS = [
+  { title:"Forward Delegation", col:"#d4aa50", text:"Successor covers 80%+ of sheath body → sheath powers transfer FORWARD to successor. Entry moves to new candle." },
+  { title:"Whisper Delegation", col:"#7c5cbf", text:"Wick covers 80%+ of sheath candle backside → covered candle will be RAIDED. Not an entry — a target." },
+  { title:"Induced Liquidity",  col:"#e09050", text:"Shifter touches injector via control without raiding control's BSL/SSL → furthest point inside injector = limit entry zone." },
+  { title:"Move Origin (TP)",   col:"#3ecf7e", text:"TP = last point the OPPOSITE force started their impulse. Bullish trade: target last BSL (high before bearish run)." },
+  { title:"Candlestick Liquidity",col:"#d4aa50",text:"Every candle has its own BSL (high) and SSL (low). Wick raid of either = reversal. Body break = continuation at that candle level." },
+  { title:"Gemini Candle",      col:"#7c5cbf", text:"A candle with roles from BOTH forces. Holds synthetic liquidity. Used in Laws 07, 08, and Induced Liquidity." },
+];
+
+export default function LawsScreen() {
+  return (
+    <div style={{ height:"100%", overflowY:"auto", padding:"14px 14px 20px" }}>
+
+      {/* Header */}
+      <div style={{ ...PS, marginBottom:12, background:"#0a0812", borderColor:`#d4aa5040` }}>
+        <div style={{ fontFamily:"'Cinzel',serif", fontSize:12, color:"#d4aa50", letterSpacing:3, marginBottom:8 }}>
+          THE 11 SHARINGAN LAWS
+        </div>
+        <div style={{ fontSize:10, color:"#5a5270", lineHeight:1.9 }}>
+          ICS = Injector → Control → Shifter{"\n"}
+          S.P.I → Injector · S.P.C → Control · S.P.S → Shifter{"\n"}
+          <span style={{ color:"#d4aa50" }}>Sheath = unfilled order zone. Entry = limit on sheath body. SL = beyond sheath wick.</span>
+        </div>
+      </div>
+
+      {/* Laws */}
+      {LAWS.map(l => (
+        <div key={l.id} style={{ ...PS, marginBottom:10, borderLeft:`3px solid ${l.col}` }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+            <span style={{ fontFamily:"'Cinzel',serif", fontSize:11, color:l.col, letterSpacing:2 }}>LAW {l.id}</span>
+            <span style={{ fontSize:9, color:l.col, background:`${l.col}15`, border:`1px solid ${l.col}30`, borderRadius:4, padding:"2px 8px", fontFamily:"'IBM Plex Mono',monospace" }}>
+              S.P. → {l.sp}
+            </span>
+          </div>
+          <div style={{ fontSize:12, color:"#c8bfa0", marginBottom:5, lineHeight:1.5, fontFamily:"'IBM Plex Mono',monospace" }}>{l.rule}</div>
+          <div style={{ fontSize:10, color:"#5a5270", lineHeight:1.6 }}>{l.note}</div>
+        </div>
+      ))}
+
+      {/* Additional Concepts */}
+      <div style={{ fontFamily:"'Cinzel',serif", fontSize:10, color:"#d4aa50", letterSpacing:3, margin:"16px 0 10px" }}>
+        ADDITIONAL CONCEPTS
+      </div>
+      {EXTRAS.map((e,i) => (
+        <div key={i} style={{ ...PS, marginBottom:10 }}>
+          <div style={{ fontSize:10, color:e.col, marginBottom:6, letterSpacing:1, fontFamily:"'IBM Plex Mono',monospace" }}>{e.title}</div>
+          <div style={{ fontSize:11, color:"#5a5270", lineHeight:1.7 }}>{e.text}</div>
+        </div>
+      ))}
+
+      {/* Credits */}
+      <div style={{ ...PS, background:"#0a0812", marginTop:4 }}>
+        <div style={{ fontSize:9, color:"#5a5270", lineHeight:2 }}>
+          <span style={{ color:"#d4aa5060" }}>★ SOURCE:</span> Banqu Sharingan Handbook v0.3.0 by @BA_NQU{"\n"}
+          <span style={{ color:"#d4aa5060" }}>★ SOURCE:</span> JeaFx Fibonacci Framework by @JeaFxForexTrading{"\n"}
+          <span style={{ color:"#d4aa5060" }}>⚠ DISCLAIMER:</span> Educational tool only. Not financial advice. Always manage your risk.
+        </div>
+      </div>
+    </div>
+  );
+}

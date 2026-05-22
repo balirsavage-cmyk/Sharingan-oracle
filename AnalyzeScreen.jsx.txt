@@ -1,0 +1,295 @@
+import { useState } from "react";
+import { C, IS, PS, LS, MARKETS, TIMEFRAMES, SHARINGAN_LAWS, DOJI_TYPES, BOS_STATES, SYSTEM_PROMPT, calcFibs, fmtPrice } from "../constants.js";
+
+function Chip({ active, onClick, children, color }) {
+  const col = color || C.gold;
+  return (
+    <button onClick={onClick} style={{
+      padding: "8px 12px", border: `1px solid ${active ? col : C.border}`,
+      background: active ? `${col}18` : "#090712",
+      color: active ? col : C.muted,
+      borderRadius: 8, fontSize: 11, fontFamily: "'IBM Plex Mono',monospace",
+      cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+    }}>{children}</button>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <span style={LS}>{label}</span>
+      {children}
+    </div>
+  );
+}
+
+function Section({ title, color, children, border }) {
+  return (
+    <div style={{ ...PS, marginBottom: 12, border: border || `1px solid ${C.border}` }}>
+      <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9,
+        letterSpacing: 2, color: color || C.muted, marginBottom: 14 }}>{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function FibCard({ high, low, currentPrice }) {
+  const h = parseFloat(high), l = parseFloat(low), cur = parseFloat(currentPrice);
+  if (isNaN(h) || isNaN(l) || h <= l) return null;
+  const fibs = calcFibs(h, l);
+  const pct = !isNaN(cur) ? Math.max(0, Math.min(100, ((cur - l) / (h - l)) * 100)) : null;
+  const lc = (t) => t==="golden"?C.gold:t==="stop"?C.red:t==="anchor"?C.muted:t==="key"?"#a08060":"#4a4060";
+  return (
+    <div style={{ ...PS, marginBottom: 12 }}>
+      <div style={{ fontSize: 9, letterSpacing: 2, color: C.muted, marginBottom: 10 }}>
+        FIBONACCI MAP  BSL:{fmtPrice(h,high)} → SSL:{fmtPrice(l,high)}
+      </div>
+      {fibs.retracements.map((r,i) => (
+        <div key={i} style={{ display:"flex", alignItems:"center", gap:6, marginBottom:r.type==="golden"?3:4, opacity:r.type==="anchor"?0.4:1 }}>
+          <span style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:lc(r.type), width:58, flexShrink:0 }}>{r.label}</span>
+          <div style={{ flex:1, height:r.type==="golden"?2:1, background:lc(r.type), opacity:r.type==="golden"?0.8:0.25, borderRadius:1 }}/>
+          <span style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:lc(r.type), width:70, textAlign:"right", flexShrink:0 }}>{fmtPrice(r.price,high)}</span>
+        </div>
+      ))}
+      <div style={{ margin:"8px 0", padding:"6px 10px", background:`${C.gold}10`, border:`1px dashed ${C.gold}40`, borderRadius:6, display:"flex", justifyContent:"space-between" }}>
+        <span style={{ fontSize:9, color:C.gold }}>★ GOLDEN ZONE</span>
+        <span style={{ fontSize:9, color:C.gold }}>{fmtPrice(fibs.retracements[4].price,high)} — {fmtPrice(fibs.retracements[3].price,high)}</span>
+      </div>
+      {pct !== null && (
+        <div style={{ padding:"6px 10px", background:"#12101e", border:`1px solid ${C.border}`, borderRadius:6, display:"flex", justifyContent:"space-between", marginBottom:8 }}>
+          <span style={{ fontSize:9, color:C.muted }}>NOW</span>
+          <span style={{ fontSize:12, color:C.text, fontFamily:"'IBM Plex Mono',monospace", fontWeight:600 }}>{currentPrice}</span>
+          <span style={{ fontSize:9, color:C.muted }}>{(100-pct).toFixed(1)}% retraced</span>
+        </div>
+      )}
+      <div style={{ paddingTop:8, borderTop:`1px solid ${C.border}` }}>
+        <div style={{ fontSize:9, color:C.muted, marginBottom:6 }}>MOVE ORIGIN TARGETS</div>
+        {fibs.extensions.map((e,i) => (
+          <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"3px 0" }}>
+            <span style={{ fontSize:10, color:e.type==="tp2"?C.green:"#5a8a6e", fontFamily:"'IBM Plex Mono',monospace" }}>{e.label}</span>
+            <span style={{ fontSize:10, color:e.type==="tp2"?C.green:"#3a6a4e", fontFamily:"'IBM Plex Mono',monospace" }}>{fmtPrice(e.price,high)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function AnalyzeScreen({ onSaveSignal }) {
+  const [market, setMarket]       = useState("");
+  const [customMkt, setCustomMkt] = useState("");
+  const [tf, setTf]               = useState("");
+  const [htfBias, setHtfBias]     = useState("");
+  const [trend, setTrend]         = useState("");
+  const [swingHigh, setSwingHigh] = useState("");
+  const [swingLow, setSwingLow]   = useState("");
+  const [curPrice, setCurPrice]   = useState("");
+  const [law, setLaw]             = useState("");
+  const [dojiType, setDojiType]   = useState("");
+  const [sheathH, setSheathH]     = useState("");
+  const [sheathL, setSheathL]     = useState("");
+  const [moveOrigin, setMoveOrigin] = useState("");
+  const [bos, setBos]             = useState("");
+  const [sdZone, setSdZone]       = useState("");
+  const [extra, setExtra]         = useState("");
+  const [analysis, setAnalysis]   = useState("");
+  const [loading, setLoading]     = useState(false);
+  const [showFib, setShowFib]     = useState(false);
+
+  const selectedMarket = market === "Custom…" ? customMkt : market;
+  const selectedLaw = SHARINGAN_LAWS.find(l => l.id === law);
+  const h = parseFloat(swingHigh), l = parseFloat(swingLow);
+  const fibReady = !isNaN(h) && !isNaN(l) && h > l;
+
+  const runAnalysis = async () => {
+    if (!selectedMarket || !tf || !trend || !swingHigh || !swingLow || !curPrice) {
+      alert("Required: Market, Timeframe, Trend, Swing High, Swing Low, Current Price");
+      return;
+    }
+    setLoading(true); setAnalysis(""); setShowFib(true);
+    const fibs = fibReady ? calcFibs(h, l) : null;
+
+    const prompt = `Sharingan + Fibonacci analysis:
+MARKET: ${selectedMarket} | TF: ${tf} | HTF: ${htfBias||"N/A"} | TREND: ${trend.toUpperCase()}
+SWING HIGH (BSL): ${swingHigh} | SWING LOW (SSL): ${swingLow} | PRICE: ${curPrice}
+LAW: ${selectedLaw?.label||"Not identified"} | SHEATH→ ${selectedLaw?.sheath||""}
+DOJI: ${dojiType||"N/A"} | SHEATH H: ${sheathH||"N/A"} | SHEATH L: ${sheathL||"N/A"}
+MOVE ORIGIN: ${moveOrigin||"N/A"} | S&D ZONE: ${sdZone||"N/A"} | 5M BoS: ${bos||"N/A"}
+NOTES: ${extra||"None"}
+${fibs ? `\nFIB LEVELS:\n${fibs.retracements.map(r=>`${r.label}: ${fmtPrice(r.price,swingHigh)} (${r.note})`).join(" | ")}\nGOLDEN ZONE: ${fmtPrice(fibs.retracements[4].price,swingHigh)}–${fmtPrice(fibs.retracements[3].price,swingHigh)}\nEXTENSIONS: ${fibs.extensions.map(e=>`${e.label}: ${fmtPrice(e.price,swingHigh)}`).join(" | ")}` : ""}
+
+Provide: Law validation, sheath candle confirmation, entry/SL/TP1/TP2, RR, grade (A+/A/B/C/F), Sharingan Verdict.`;
+
+    try {
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, system: SYSTEM_PROMPT, messages: [{ role: "user", content: prompt }] })
+      });
+      const d = await resp.json();
+      const text = d.content?.map(b => b.text || "").join("") || "Error.";
+      setAnalysis(text);
+      onSaveSignal({ market: selectedMarket, tf, trend, law: selectedLaw?.label, analysis: text, time: new Date().toISOString(), swingHigh, swingLow });
+    } catch { setAnalysis("⚠️ Connection error. Check internet and try again."); }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ height: "100%", overflowY: "auto", padding: "14px 14px 20px" }}>
+
+      {/* Step 1 — Market */}
+      <Section title="① MARKET & TIMEFRAME">
+        <Field label="Instrument">
+          <select value={market} onChange={e => setMarket(e.target.value)} style={{ ...IS, cursor: "pointer" }}>
+            <option value="">Select market...</option>
+            {MARKETS.map(m => <option key={m}>{m}</option>)}
+          </select>
+        </Field>
+        {market === "Custom…" && (
+          <Field label="Custom Name">
+            <input value={customMkt} onChange={e => setCustomMkt(e.target.value)} placeholder="e.g. V75, DOGE/USD" style={IS}/>
+          </Field>
+        )}
+        <Field label="Timeframe">
+          <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4 }}>
+            {TIMEFRAMES.map(t => <Chip key={t} active={tf===t} onClick={()=>setTf(t)}>{t}</Chip>)}
+          </div>
+        </Field>
+      </Section>
+
+      {/* Step 2 — Bias */}
+      <Section title="② TOP-DOWN BIAS">
+        <Field label="HTF Bias (Daily/Weekly)">
+          <div style={{ display: "flex", gap: 8 }}>
+            {["bullish","bearish","neutral"].map(b => (
+              <Chip key={b} active={htfBias===b} onClick={()=>setHtfBias(b)}
+                color={b==="bullish"?C.green:b==="bearish"?C.red:C.muted}>
+                {b==="bullish"?"▲ BULL":b==="bearish"?"▼ BEAR":"— NEUT"}
+              </Chip>
+            ))}
+          </div>
+        </Field>
+        <Field label="Entry TF Direction">
+          <div style={{ display: "flex", gap: 8 }}>
+            <Chip active={trend==="bullish"} onClick={()=>setTrend("bullish")} color={C.green}>▲ BULLISH</Chip>
+            <Chip active={trend==="bearish"} onClick={()=>setTrend("bearish")} color={C.red}>▼ BEARISH</Chip>
+          </div>
+        </Field>
+      </Section>
+
+      {/* Step 3 — Fibonacci */}
+      <Section title="③ FIBONACCI INPUTS">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+          <Field label="Swing High / BSL">
+            <input value={swingHigh} onChange={e=>setSwingHigh(e.target.value)} placeholder="High wick" style={IS} type="number" step="any"/>
+          </Field>
+          <Field label="Swing Low / SSL">
+            <input value={swingLow} onChange={e=>setSwingLow(e.target.value)} placeholder="Low wick" style={IS} type="number" step="any"/>
+          </Field>
+        </div>
+        <Field label="Current Price">
+          <input value={curPrice} onChange={e=>setCurPrice(e.target.value)} placeholder="Where is price now?" style={IS} type="number" step="any"/>
+        </Field>
+        {fibReady && (
+          <button onClick={()=>setShowFib(!showFib)} style={{
+            width:"100%", padding:"10px", background:"none", border:`1px solid ${C.gold}40`,
+            borderRadius:8, color:C.gold, fontSize:11, fontFamily:"'IBM Plex Mono',monospace", cursor:"pointer"
+          }}>{showFib?"▲ Hide Fib Map":"▼ Show Fib Map"}</button>
+        )}
+      </Section>
+
+      {showFib && fibReady && <FibCard high={swingHigh} low={swingLow} currentPrice={curPrice}/>}
+
+      {/* Step 4 — Sharingan */}
+      <Section title="④ SHARINGAN LAW" border={`1px solid ${C.purple}50`} color={C.purple}>
+        <Field label="Sharingan Law Firing">
+          <select value={law} onChange={e=>setLaw(e.target.value)} style={{ ...IS, cursor:"pointer" }}>
+            <option value="">Select law...</option>
+            {SHARINGAN_LAWS.map(l=><option key={l.id} value={l.id}>{l.label}</option>)}
+          </select>
+          {selectedLaw?.sheath && (
+            <div style={{ marginTop:6, padding:"6px 10px", background:`${C.purple}10`, border:`1px solid ${C.purple}30`, borderRadius:6, fontSize:10, color:C.purple }}>
+              ◈ Sheath Powers → {selectedLaw.sheath}
+            </div>
+          )}
+        </Field>
+
+        <Field label="Doji Type">
+          <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:4 }}>
+            {DOJI_TYPES.map(d=><Chip key={d.id} active={dojiType===d.id} onClick={()=>setDojiType(d.id)} color={C.gold}>{d.label}</Chip>)}
+          </div>
+        </Field>
+
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+          <Field label="Sheath Candle High">
+            <input value={sheathH} onChange={e=>setSheathH(e.target.value)} placeholder="Upper wick" style={IS} type="number" step="any"/>
+          </Field>
+          <Field label="Sheath Candle Low">
+            <input value={sheathL} onChange={e=>setSheathL(e.target.value)} placeholder="Lower wick" style={IS} type="number" step="any"/>
+          </Field>
+        </div>
+
+        {sheathH && sheathL && (
+          <div style={{ padding:"8px 12px", background:`${C.purple}08`, border:`1px solid ${C.purple}30`, borderRadius:8, marginBottom:12 }}>
+            <div style={{ fontSize:9, color:C.purple, marginBottom:4 }}>ENTRY ZONE (limit on sheath body)</div>
+            <div style={{ fontSize:13, color:C.text, fontFamily:"'IBM Plex Mono',monospace" }}>{sheathL} — {sheathH}</div>
+            <div style={{ fontSize:9, color:C.muted, marginTop:3 }}>SL Long: below {sheathL} | SL Short: above {sheathH}</div>
+          </div>
+        )}
+
+        <Field label="Move Origin / TP Price">
+          <input value={moveOrigin} onChange={e=>setMoveOrigin(e.target.value)} placeholder="Last opposite impulse origin" style={IS} type="number" step="any"/>
+        </Field>
+      </Section>
+
+      {/* Step 5 — Confirmation */}
+      <Section title="⑤ S&D ZONE + 5M CONFIRMATION" border={`1px solid ${C.gold}30`} color={C.gold}>
+        <Field label="Supply / Demand Zone">
+          <input value={sdZone} onChange={e=>setSdZone(e.target.value)} placeholder="e.g. Demand 4461–4465" style={IS}/>
+        </Field>
+        <Field label="5M Break of Structure">
+          <div style={{ display:"flex", gap:6 }}>
+            {BOS_STATES.map(s=><Chip key={s.id} active={bos===s.id} onClick={()=>setBos(s.id)} color={s.col}>{s.label}</Chip>)}
+          </div>
+          {bos==="confirmed" && <div style={{ marginTop:8, padding:"6px 10px", background:"#0d2018", border:`1px solid ${C.green}40`, borderRadius:6, fontSize:10, color:C.green }}>✓ ENTRY READY — Execute the Law</div>}
+          {bos==="forming"   && <div style={{ marginTop:8, padding:"6px 10px", background:"#1a1306", border:`1px solid ${C.gold}40`, borderRadius:6, fontSize:10, color:C.gold }}>◈ Monitor — BoS forming</div>}
+          {bos==="failed"    && <div style={{ marginTop:8, padding:"6px 10px", background:"#200d0d", border:`1px solid ${C.red}40`, borderRadius:6, fontSize:10, color:C.red }}>✗ Setup failed — step aside</div>}
+        </Field>
+        <Field label="Additional Notes">
+          <textarea value={extra} onChange={e=>setExtra(e.target.value)}
+            placeholder="Gemini candle, Law 11 exhaustion, synthetic liquidity..."
+            style={{ ...IS, minHeight:70, resize:"vertical", lineHeight:1.6 }}/>
+        </Field>
+      </Section>
+
+      {/* Run Button */}
+      <button onClick={runAnalysis} disabled={loading} style={{
+        width:"100%", padding:"16px 0", borderRadius:10, border:"none",
+        background: loading ? "#14121e" : `linear-gradient(135deg,#8a6010 0%,${C.gold} 50%,#8a6010 100%)`,
+        color: loading ? C.muted : "#06050a",
+        fontFamily:"'Cinzel',serif", fontSize:14, fontWeight:700, letterSpacing:3,
+        cursor: loading ? "not-allowed" : "pointer",
+        boxShadow: loading ? "none" : `0 4px 24px ${C.gold}30`,
+        marginBottom: 16,
+      }}>
+        {loading ? "◈  READING THE SHARINGAN..." : "◈  RUN ANALYSIS"}
+      </button>
+
+      {/* Analysis Output */}
+      {loading && (
+        <div style={{ ...PS, textAlign:"center", padding:"32px" }}>
+          <div style={{ fontSize:22, color:C.gold, animation:"pulse 1.2s ease-in-out infinite" }}>◈</div>
+          <div style={{ fontSize:10, color:C.muted, letterSpacing:2, marginTop:10 }}>APPLYING LAWS + FIBONACCI...</div>
+        </div>
+      )}
+      {analysis && !loading && (
+        <div style={{ ...PS, border:`1px solid ${C.gold}30` }}>
+          <div style={{ fontSize:9, letterSpacing:2, color:C.gold, marginBottom:12 }}>◈ SHARINGAN ANALYSIS</div>
+          <pre style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:11, color:C.text, whiteSpace:"pre-wrap", lineHeight:1.8, margin:0 }}>{analysis}</pre>
+          <div style={{ marginTop:12, padding:"6px 10px", background:"#0a0812", borderRadius:6, fontSize:9, color:C.muted }}>
+            ⚠ Educational only. Not financial advice.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

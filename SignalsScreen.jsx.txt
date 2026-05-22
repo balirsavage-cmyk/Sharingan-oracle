@@ -1,0 +1,74 @@
+import { C, PS } from "../constants.js";
+
+export default function SignalsScreen({ signals }) {
+  if (signals.length === 0) {
+    return (
+      <div style={{ height:"100%", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", opacity:0.35, padding:32 }}>
+        <div style={{ fontSize:36, color:C.gold }}>⚡</div>
+        <div style={{ fontFamily:"'Cinzel',serif", fontSize:14, color:C.gold, letterSpacing:3, marginTop:12 }}>NO SIGNALS YET</div>
+        <div style={{ fontSize:11, color:C.muted, marginTop:8, textAlign:"center", lineHeight:1.8 }}>
+          Run an analysis in the Analyze tab.<br/>Signals are saved here automatically.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ height:"100%", overflowY:"auto", padding:"14px" }}>
+      <div style={{ fontSize:9, letterSpacing:2, color:C.muted, marginBottom:14 }}>
+        SIGNAL HISTORY — {signals.length} SAVED
+      </div>
+      {signals.map((s, i) => {
+        const gradeMatch = s.analysis?.match(/[Gg]rade[:\s]+([A-F][+\-]?)/);
+        const grade = gradeMatch ? gradeMatch[1] : null;
+        const gc = grade?.startsWith("A") ? C.green : grade?.startsWith("B") ? C.gold : C.red;
+        const dirCol = s.trend === "bullish" ? C.green : C.red;
+
+        return (
+          <div key={i} style={{ ...PS, marginBottom:12, borderLeft:`3px solid ${dirCol}` }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
+              <div>
+                <div style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:12, color:C.text, fontWeight:600 }}>
+                  {s.market}
+                </div>
+                <div style={{ fontSize:9, color:C.muted, marginTop:2 }}>
+                  {s.tf} · {new Date(s.time).toLocaleString()}
+                </div>
+              </div>
+              <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+                <span style={{ fontSize:10, color:dirCol, background:`${dirCol}15`, border:`1px solid ${dirCol}40`, borderRadius:4, padding:"2px 8px", fontFamily:"'IBM Plex Mono',monospace" }}>
+                  {s.trend?.toUpperCase()}
+                </span>
+                {grade && (
+                  <span style={{ fontSize:11, color:gc, background:`${gc}15`, border:`1px solid ${gc}40`, borderRadius:4, padding:"2px 8px", fontFamily:"'Cinzel',serif", fontWeight:700 }}>
+                    {grade}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {s.law && (
+              <div style={{ fontSize:9, color:C.purple, marginBottom:6, fontFamily:"'IBM Plex Mono',monospace" }}>
+                {s.law}
+              </div>
+            )}
+
+            <div style={{ display:"flex", gap:12, marginBottom:8 }}>
+              <div style={{ fontSize:9, color:C.muted }}>HIGH <span style={{ color:C.text }}>{s.swingHigh}</span></div>
+              <div style={{ fontSize:9, color:C.muted }}>LOW <span style={{ color:C.text }}>{s.swingLow}</span></div>
+            </div>
+
+            <details>
+              <summary style={{ fontSize:10, color:C.gold, cursor:"pointer", fontFamily:"'IBM Plex Mono',monospace", listStyle:"none" }}>
+                ▼ View Full Analysis
+              </summary>
+              <pre style={{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:C.text, whiteSpace:"pre-wrap", lineHeight:1.75, marginTop:10, paddingTop:10, borderTop:`1px solid ${C.border}` }}>
+                {s.analysis}
+              </pre>
+            </details>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
